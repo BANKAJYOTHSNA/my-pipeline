@@ -1,0 +1,63 @@
+pipeline {
+    agent any
+
+    environment {
+        TARGET_SERVER = 'ubuntu@<your-server-ip>'
+        DEPLOY_DIR = '/home/ubuntu/jenkins-demo-app'
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/YourUsername/jenkins-demo-app.git'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo 'Building Node.js app...'
+            }
+        }
+
+        stage('Deploy via SSH') {
+            steps {
+                sshPublisher(publishers: [
+                    sshPublisherDesc(
+                        configName: 'My-SSH-Server',
+                        transfers: [
+                            sshTransfer(
+                                sourceFiles: '**',
+                                removePrefix: '',
+                                remoteDirectory: '${DEPLOY_DIR}',
+                                execCommand: 'bash ${DEPLOY_DIR}/restart.sh'
+                            )
+                        ]
+                    )
+                ])
+            }
+        }
+    }
+
+    post {
+        success {
+            emailext(
+                subject: "✅ SUCCESS: Jenkins Build #${BUILD_NUMBER}",
+                body: "The Jenkins build was successful!",
+                to: "your-email@example.com"
+            )
+        }
+        failure {
+            emailext(
+                subject: "❌ FAILURE: Jenkins Build #${BUILD_NUMBER}",
+                body: "The Jenkins build failed. Please check the console output.",
+                to: "your-email@example.com"
+            )
+        }
+    }
+}
